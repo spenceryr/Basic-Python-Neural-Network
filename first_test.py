@@ -38,7 +38,6 @@ def batch_gradient_descent(epochs, learning_rate, dim_input):
     current_error = calc_error(w)
     for _ in range(epochs):
         r = (learning_rate * sum([gradient(1 if c1 in label else 0,image,w) for image, label in train_set]))
-        print(r)
         v = w + r
         new_error = calc_error(v)
         w = v if new_error < current_error else w
