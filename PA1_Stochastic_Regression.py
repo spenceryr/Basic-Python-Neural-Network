@@ -25,22 +25,21 @@ def batch_gd_sm(T, a):
     global holdout_set
     for _ in range(T):
         for i in range(k):
-            w[i] = np.add(w[i], np.multiply(a, (sigma(train_set, lambda p: gradient(p[0], p[1])))))
+            w[i] = np.add(w[i], np.multiply(a, (sigma(train_set, lambda p: gradient_sm(p[0], p[1], w, i)))))
     return w
 
-def softmax_activation(x, w):
+def softmax_activation(x, k, w):
     """
     Args:
         x: input vector
+        k: class
         w: vector of weight vectors
+    Return:
+        y_k
     """
-    k = len(w)
-    y = np.zeros(k)
-    for i in range(k):
-        exp_k = np.power(np.e, np.dot(w[i],x))
-        sigma_exp_k = sigma(w, lambda n: np.power(np.e, np.dot(n, x)))
-        y[i] = exp_k / sigma_exp_k
-    return y
+    exp_k = np.power(np.e, np.dot(w[k],x))
+    sigma_exp_k = sigma(w, lambda n: np.power(np.e, np.dot(n, x)))
+    return exp_k / sigma_exp_k
 
 
 def sigma(s, f):
@@ -55,24 +54,17 @@ def sigma(s, f):
         total = np.add(total, f(s[i]))
     return total
 
-
-def yLog(x):
-    """
-    Args: 
-        x: input vector
-    """
-    global w
-    return (1 / (1 + np.power(np.e, (-1 * np.dot(w,x)))))
-
-def gradient(x, ts):
+def gradient_sm(x, ts, w, k):
     """
     Args:
         x: input vector
         ts: teaching signal
+        w: vector of weight vectors
+        k: class
     Returns:
-        Delta(E(w))
+        Delta(E(w)_k)
     """
-    return np.multiply((ts - yLog(x)), x)
+    return np.multiply((ts - softmax_activation(x, k, w)), x)
 
 def main():
     global dim
