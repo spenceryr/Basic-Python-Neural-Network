@@ -4,19 +4,33 @@ from dataloader import load_data
 import numpy as np
 import matplotlib.pyplot as plt
 
-test_learning_rates = input("Testing learning rates?(y/n): ").lower()
-test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
+test_single = input("Single test?(y/n): ").lower()
+test_single = test_single == 'y' or test_single == 'yes'
+test_learning_rates = None
+learning_rates = []
+k_pcas = None
+if not test_single:
+    test_learning_rates = input("Testing learning rates?(y/n): ").lower()
+    test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
+    learning_rates = [.001, .8, 10] if test_learning_rates else [.01, .05, .8, .5]
+    k_pcas = 8 if test_learning_rates else [1,2,4,8]
+else:
+    learning_rates = .5
+    k_pcas = 8
 
 train_set = []
 holdout_set = []
 test_set = []
-learning_rates = [.001, .1, 4] if test_learning_rates else [.01, .05, .8, .5]
-k_pcas = 8 if test_learning_rates else [1,2,4,8]
 epochs = 10
 c1 = 'ht'
 c2 = 'm'
 holdout_errors = []
 train_errors = []
+
+def append_one(image_set):
+    for (image,label), i in zip(image_set, range(len(image_set))):
+        image_set[i] = (np.array([np.insert(image, 0, 1)]), label)
+    return image_set
 
 def logistic_reg(w, x):
     return 1/(1+pow(np.e, -1 * (w.T.dot(x[0]))))
@@ -59,6 +73,32 @@ def batch_gradient_descent(epochs, learning_rate, dim_input):
 
     return w
 
+def single_test(data):
+    global train_errors
+    global holdout_errors
+    fig, ax_list = plt.subplots(nrows=1, ncols=1, figsize=(15,6), sharex=True)
+    fig.suptitle("Average Training Errors", y=1)
+    fig.tight_layout()
+    fig.subplots_adjust(top=.85, wspace=.3)
+
+    train_errors = [[],[],[],[],[]]
+    holdout_errors = [[],[],[],[],[]]
+    percent_correct = []
+
+    percent_correct = train_model(data, k_pcas, learning_rates, random=False)
+
+    train_mean, train_std = (list(map(np.mean, train_errors)), list(map(np.std, train_errors)))
+
+    graph = ax_list
+    graph.set_title("Learning Rate: " + str(learning_rates))
+    graph.set_ylabel("Cross Entropy Loss")
+    graph.set_xlabel("# of Epochs")
+    graph.errorbar([2,4,6,8,10], train_mean, train_std, linestyle='-', color='red', marker='o',)
+    mean = np.mean(percent_correct)
+    std_dev = np.std(percent_correct)
+    print("PCA={}, average % correct= {} ({})".format(k_pcas, mean, std_dev))
+    plt.savefig("single_test.png", bbox_inches='tight')
+
 def learning_rate_test(data):
     global train_errors
     global holdout_errors
@@ -80,6 +120,7 @@ def learning_rate_test(data):
         graph.errorbar([2,4,6,8,10], train_mean, train_std, linestyle='-', color='red', marker='o',)
 
     plt.savefig("lr_test.png", bbox_inches='tight')
+
 
 def pca_test(data):
     global train_errors
@@ -132,11 +173,11 @@ def train_model(slice_data, k, lr, random=True):
 
         p_c_a = pca.PCA(k)
         p_c_a.fit(np.array([image for image,_ in train_set]))
-        train_set = [(p_c_a.transform(np.array(image)), label) for image, label in train_set]
-        holdout_set = [(p_c_a.transform(np.array(image)), label) for image, label in holdout_set]
-        test_set = [(p_c_a.transform(np.array(image)), label) for image, label in test_set]
+        train_set = append_one([(p_c_a.transform(np.array(image)), label) for image, label in train_set])
+        holdout_set = append_one([(p_c_a.transform(np.array(image)), label) for image, label in holdout_set])
+        test_set = append_one([(p_c_a.transform(np.array(image)), label) for image, label in test_set])
 
-        w = batch_gradient_descent(epochs, lr, p_c_a.k)
+        w = batch_gradient_descent(epochs, lr, p_c_a.k + 1)
         percent_correct.append(sum([correct_category(w, image, 1 if c1 in label else 0) for image,label in test_set])/len(test_set))
     return percent_correct
 
@@ -144,10 +185,13 @@ def main():
     images, labels = load_data(data_dir="./CAFE/")
     data = zip(images,labels)
     slice_data = [(image, label) for image, label in data if c2 in label.strip('pgm') or c1 in label.strip('pgm')]
-    if test_learning_rates:
-        learning_rate_test(slice_data)
+    if test_single:
+        single_test(slice_data)
     else:
-        pca_test(slice_data)
+        if test_learning_rates:
+            learning_rate_test(slice_data)
+        else:
+            pca_test(slice_data)
 
 
 
