@@ -14,10 +14,10 @@ k_pcas = None
 if not test_single:
     test_learning_rates = input("Testing learning rates?(y/n): ").lower()
     test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
-    learning_rates = [.005, .008, .015] if test_learning_rates else .06
+    learning_rates = [.01, .015, .02] if test_learning_rates else .06
     k_pcas = 32 if test_learning_rates else [1,8,16,32]
 else:
-    learning_rates = .01
+    learning_rates = .015
     k_pcas = 32
 
 c = 6               #categories
@@ -61,6 +61,7 @@ def batch_gd_sm(T, a, dim):
     global train_errors
 
     w = [np.zeros(dim) for _ in range(c)]   #list of weight vectors
+    best_w = w
     minError = ce_error(w, holdout_set)
     holdout_errors[0].append(minError)
     train_errors[0].append(ce_error(w, train_set))
@@ -70,11 +71,12 @@ def batch_gd_sm(T, a, dim):
             v[i] = np.add(w[i], np.multiply(a, (sigma(train_set, lambda p: gradient_sm(p[0], one_hot(p[1])[i], w, i)))))
         curError = ce_error(v, holdout_set)
         if curError < minError:
-            w = v
+            best_w = v
             minError = curError
+        w = v
         holdout_errors[e+1].append(curError)
         train_errors[e+1].append(ce_error(w, train_set))
-    return w
+    return best_w
 
 def ce_error(w, s):
     """
@@ -143,6 +145,7 @@ def main():
     images, labels = dl.load_data()
     data = zip(images, labels)
     slice_data = [(i, l) for i, l in data if 'ht' not in l.strip('pgm') and 'n' not in l.strip('pgm')]
+    slice_data += [(i, l) for i, l in data if 'ng' in l.strip('pgm') and 'n1' not in l.strip('pgm')]
     if test_single:
         single_test(slice_data)
     else:
@@ -261,7 +264,7 @@ def train_model(slice_data, k, lr, random=True):
     slice_data = bucket(slice_data, 6)
     for i in range(5):
         test_start_i = 2*i
-        test_end_i = 2*i + 2
+        test_end_i = test_start_i + 2
         test_set = unbucket(slice_data[test_start_i:test_end_i], 6)
         remaining = slice_data[:test_start_i] + slice_data[test_end_i:]
         rand.shuffle(remaining)
@@ -344,29 +347,6 @@ def unbucket(bl, n):
             l.append(b[i])
     return l
 
-    """
-    ht_m_data = [(i, 1) for i, l in data if 'ht' in l.strip('pgm')]
-    ht_m_data += [(i, 0) for i, l in data if 'm' in l.strip('pgm')]
-    for _ in range(int(len(ht_m_data) * .6)):
-        random_index = rand.randint(0, len(ht_m_data)-1)
-        train_set.append(ht_m_data[random_index])
-        del ht_m_data[random_index]
-    for _ in range(int(len(ht_m_data) * .5)):
-        random_index = rand.randint(0, len(ht_m_data)-1)
-        holdout_set.append(ht_m_data[random_index])
-        del ht_m_data[random_index]
-    test_set = ht_m_data
-
-    pcaConv = pca.PCA(k_pcas)
-    pcaConv.fit(np.array([i for i, l in train_set][:]))
-    train_set = [(pcaConv.transform(i)[0], ts) for i, ts in train_set]
-    holdout_set = [(pcaConv.transform(i)[0], ts) for i, ts in holdout_set]
-    test_set = [(pcaConv.transform(i)[0], ts) for i, ts in test_set]
-    print(batch_gd_sm(10, .01)) 
-    """
-
-
-
 def visualize(p_c_a, w):
     imgs = []
     for i in range(c):
@@ -380,7 +360,6 @@ def visualize(p_c_a, w):
     plt.title('Visualization of top 32 principal components')
     print('Save PCA image to pca_display_weights.png')
     plt.savefig('./pca_display_weights.png')
-        
 
 if __name__ == '__main__':
 	main()
