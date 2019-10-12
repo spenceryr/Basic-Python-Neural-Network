@@ -14,11 +14,11 @@ k_pcas = None
 if not test_single:
     test_learning_rates = input("Testing learning rates?(y/n): ").lower()
     test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
-    learning_rates = [.001, .08, 4] if test_learning_rates else [.01, .02, .03, .1]
-    k_pcas = 8 if test_learning_rates else [1,4,8,16]
+    learning_rates = [.005, .008, .015] if test_learning_rates else .06
+    k_pcas = 32 if test_learning_rates else [1,8,16,32]
 else:
-    learning_rates = .5
-    k_pcas = 8
+    learning_rates = .01
+    k_pcas = 32
 
 c = 6               #categories
 train_set = []
@@ -82,7 +82,7 @@ def ce_error(w, s):
         w: list of weight vectors
         s: set to test error on
     Returns:
-        Average error
+        Average cross entropy error
     """
     global c
     E = -1 * sigma(s, lambda p: sigma([k for k in range(c)], lambda k: one_hot(p[1])[k]*np.log(softmax_activation(p[0], k, w))))
@@ -98,8 +98,9 @@ def softmax_activation(x, k, w):
     Return:
         y_k
     """
-    exp_k = np.power(np.e, np.dot(w[k],x[0]))
-    sigma_exp_k = sigma(w, lambda n: np.power(np.e, np.dot(n,x[0])))
+    a_k = lambda n: np.power(np.e, np.dot(n,x[0]))
+    exp_k = a_k(w[k])
+    sigma_exp_k = sigma(w, a_k)
     return exp_k / sigma_exp_k
 
 
@@ -168,8 +169,6 @@ def single_test(data):
 
     train_mean, train_std = (list(map(np.mean, train_errors)), list(map(np.std, train_errors)))
     holdout_mean, holdout_std = (list(map(np.mean, holdout_errors)), list(map(np.std, holdout_errors)))
-    print(train_mean)
-    print(holdout_mean)
 
     graph = ax_list
     graph.set_title("Learning Rate: " + str(learning_rates))
@@ -177,8 +176,8 @@ def single_test(data):
     graph.set_xlabel("# of Epochs")
     graph.errorbar(list(range(epochs + 1)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
     graph.errorbar(list(range(epochs + 1)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
-    graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
-    graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
+    graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean, dtype=float) + np.asarray(holdout_std, dtype=float), np.asarray(holdout_mean, dtype=float) - np.asarray(holdout_std, dtype=float), facecolor='r',alpha=0.5)
+    graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean, dtype=float) + np.asarray(train_std, dtype=float), np.asarray(train_mean, dtype=float) - np.asarray(train_std, dtype=float), facecolor='b',alpha=0.5)
     mean = np.mean(percent_correct)
     std_dev = np.std(percent_correct)
     print("PCA={}, average % correct= {} ({})".format(k_pcas, mean, std_dev))
@@ -209,8 +208,8 @@ def learning_rate_test(data):
         graph.set_xlabel("# of Epochs")
         graph.errorbar(list(range(epochs + 1)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
         graph.errorbar(list(range(epochs + 1)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
-        graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
-        graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
+        graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean, dtype=float) + np.asarray(holdout_std, dtype=float), np.asarray(holdout_mean, dtype=float) - np.asarray(holdout_std, dtype=float), facecolor='r',alpha=0.5)
+        graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean, dtype=float) + np.asarray(train_std, dtype=float), np.asarray(train_mean, dtype=float) - np.asarray(train_std, dtype=float), facecolor='b',alpha=0.5)
 
     plt.savefig("lr_test.png", bbox_inches='tight')
     for correctness_list, i in zip(percent_correct, range(3)):
@@ -231,7 +230,7 @@ def pca_test(data):
         train_errors = [[] for _ in range(epochs + 1)]
         holdout_errors = [[] for _ in range(epochs + 1)]
 
-        pc = train_model(data, k, learning_rates[k_pcas.index(k)])
+        pc = train_model(data, k, learning_rates)
 
         percent_correct.append(pc)
         holdout_mean, holdout_std = (list(map(np.mean, holdout_errors)), list(map(np.std, holdout_errors)))
@@ -243,8 +242,8 @@ def pca_test(data):
         graph.set_xlabel("# of Epochs")
         graph.errorbar(list(range(epochs + 1)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
         graph.errorbar(list(range(epochs + 1)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
-        graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
-        graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
+        graph.fill_between(list(range(epochs + 1)), np.asarray(holdout_mean, dtype=float) + np.asarray(holdout_std, dtype=float), np.asarray(holdout_mean, dtype=float) - np.asarray(holdout_std, dtype=float), facecolor='r',alpha=0.5)
+        graph.fill_between(list(range(epochs + 1)), np.asarray(train_mean, dtype=float) + np.asarray(train_std, dtype=float), np.asarray(train_mean, dtype=float) - np.asarray(train_std, dtype=float), facecolor='b',alpha=0.5)
         graph.legend()
 
     plt.savefig("pca_test.png", bbox_inches='tight')
@@ -293,6 +292,30 @@ def correct_category_sm(x, w):
             else:
                 isCorrect = 0
     return isCorrect
+
+def confusion_matrix(w, s):
+    global c
+    matrix = np.array([[0 for _ in range(c)] for _ in range(c)])
+    for i in range(c):
+        for j in range(c):
+            matrix[i, j] = j_chosen_for_i(i, j, w, s)
+    return matrix
+
+def j_chosen_for_i(i, j, w, s):
+    global c
+    emotion_i = [x for x, l in s if one_hot(l)[i] == 1]
+    total = 0
+    for e in emotion_i:
+        currentMax_val = 0
+        currentMax_e = 0
+        for k in range(c):
+            y = softmax_activation(e, k, w)
+            if y >= currentMax_val:
+                currentMax_val = y
+                currentMax_e = k
+        if currentMax_e == j:
+            total += 1              
+    return total
 
 def append_one(image_set):
     for (image,label), i in zip(image_set, range(len(image_set))):
