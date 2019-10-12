@@ -276,6 +276,7 @@ def train_model(slice_data, k, lr, random=True):
         test_set = append_one([(p_c_a.transform(np.array(image)), label) for image, label in test_set])
 
         w = batch_gd_sm(epochs, lr, p_c_a.k + 1)
+        visualize(p_c_a, np.array(w))
         percent_correct.append(sum([correct_category_sm(x, w) for x in test_set])/len(test_set))
     return percent_correct
 
@@ -366,7 +367,20 @@ def unbucket(bl, n):
 
 
 
+def visualize(p_c_a, w):
+    imgs = []
+    for i in range(c):
+        inv_img = p_c_a.inverse_transform(w.squeeze()[i][1:])
+        imgs.append(inv_img.T)
 
+
+    imgs = np.concatenate(np.array(imgs).squeeze(), axis=0).T
+    plt.tight_layout()
+    plt.imshow(imgs, cmap='gray')
+    plt.title('Visualization of top 32 principal components')
+    print('Save PCA image to pca_display_weights.png')
+    plt.savefig('./pca_display_weights.png')
+        
 
 if __name__ == '__main__':
 	main()
