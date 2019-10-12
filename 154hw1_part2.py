@@ -12,7 +12,7 @@ k_pcas = None
 if not test_single:
     test_learning_rates = input("Testing learning rates?(y/n): ").lower()
     test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
-    learning_rates = [.001, .8, 10] if test_learning_rates else [.01, .05, .8, .5]
+    learning_rates = [.001, .1, 4] if test_learning_rates else [.01, .02, .03, .1]
     k_pcas = 8 if test_learning_rates else [1,2,4,8]
 else:
     learning_rates = .5
@@ -33,7 +33,7 @@ def append_one(image_set):
     return image_set
 
 def logistic_reg(w, x):
-    return 1/(1+pow(np.e, -1 * (w.T.dot(x[0]))))
+    return 1/(1+np.exp(-1 * (w.T.dot(x[0]))))
 
 def correct_category(w, x, t):
     output = logistic_reg(w, x)
@@ -59,41 +59,48 @@ def batch_gradient_descent(epochs, learning_rate, dim_input):
     param: dim_input: dimension of input
     """
     w = np.zeros(dim_input)
-    current_error = calc_error(w, holdout_set)
+    best_w = w
+    best_error = calc_error(w, holdout_set)
+    holdout_errors[0].append(best_error)
+    train_errors[0].append(calc_error(best_w, train_set))
     for e in range(epochs):
         r = (learning_rate * sum([gradient((1 if c1 in label else 0),image,w) for image, label in train_set]))
         v = w + r
         new_error = calc_error(v, holdout_set)
-        if new_error < current_error:
-            w = v
-            current_error = new_error
-        if (e+1)%2 == 0:
-            holdout_errors[e//2].append(current_error)
-            train_errors[e//2].append(calc_error(w, train_set))
+        if new_error < best_error:
+            best_w = v
+            best_error = new_error
+        w = v
+        holdout_errors[e+1].append(new_error)
+        train_errors[e+1].append(calc_error(w, train_set))
 
-    return w
+    return best_w
 
 def single_test(data):
     global train_errors
     global holdout_errors
     fig, ax_list = plt.subplots(nrows=1, ncols=1, figsize=(15,6), sharex=True)
-    fig.suptitle("Average Training Errors", y=1)
+    fig.suptitle("Average Holdout and Training Errors", y=1)
     fig.tight_layout()
     fig.subplots_adjust(top=.85, wspace=.3)
 
-    train_errors = [[],[],[],[],[]]
-    holdout_errors = [[],[],[],[],[]]
+    train_errors = [[],[],[],[],[],[],[],[],[],[],[]]
+    holdout_errors = [[],[],[],[],[],[],[],[],[],[],[]]
     percent_correct = []
 
     percent_correct = train_model(data, k_pcas, learning_rates, random=False)
 
     train_mean, train_std = (list(map(np.mean, train_errors)), list(map(np.std, train_errors)))
+    holdout_mean, holdout_std = (list(map(np.mean, holdout_errors)), list(map(np.std, holdout_errors)))
 
     graph = ax_list
     graph.set_title("Learning Rate: " + str(learning_rates))
     graph.set_ylabel("Cross Entropy Loss")
     graph.set_xlabel("# of Epochs")
-    graph.errorbar([2,4,6,8,10], train_mean, train_std, linestyle='-', color='red', marker='o',)
+    graph.errorbar(list(range(11)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
+    graph.errorbar(list(range(11)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
+    graph.fill_between(list(range(11)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
+    graph.fill_between(list(range(11)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
     mean = np.mean(percent_correct)
     std_dev = np.std(percent_correct)
     print("PCA={}, average % correct= {} ({})".format(k_pcas, mean, std_dev))
@@ -103,23 +110,34 @@ def learning_rate_test(data):
     global train_errors
     global holdout_errors
     fig, ax_list = plt.subplots(nrows=1, ncols=3, figsize=(15,6), sharex=True)
-    fig.suptitle("Average Training Errors", y=1)
+    fig.suptitle("Average Holdout and Training Errors", y=1)
     fig.tight_layout()
     fig.subplots_adjust(top=.85, wspace=.3)
+    percent_correct = []
     for lr in learning_rates:
-        train_errors = [[],[],[],[],[]]
-        holdout_errors = [[],[],[],[],[]]
+        train_errors = [[],[],[],[],[],[],[],[],[],[],[]]
+        holdout_errors = [[],[],[],[],[],[],[],[],[],[],[]]
 
-        train_model(data, k_pcas, lr, random=False)
+        pc = train_model(data, k_pcas, lr, random=False)
 
+        percent_correct.append(pc)
         train_mean, train_std = (list(map(np.mean, train_errors)), list(map(np.std, train_errors)))
+        holdout_mean, holdout_std = (list(map(np.mean, holdout_errors)), list(map(np.std, holdout_errors)))
+
         graph = ax_list[learning_rates.index(lr)]
         graph.set_title("Learning Rate: " + str(lr))
         graph.set_ylabel("Cross Entropy Loss")
         graph.set_xlabel("# of Epochs")
-        graph.errorbar([2,4,6,8,10], train_mean, train_std, linestyle='-', color='red', marker='o',)
+        graph.errorbar(list(range(11)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
+        graph.errorbar(list(range(11)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
+        graph.fill_between(list(range(11)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
+        graph.fill_between(list(range(11)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
 
     plt.savefig("lr_test.png", bbox_inches='tight')
+    for correctness_list, i in zip(percent_correct, range(3)):
+        mean = np.mean(correctness_list)
+        std_dev = np.std(correctness_list)
+        print("Learning Rate={}, average % correct= {} ({})".format(learning_rates[i], mean, std_dev))
 
 
 def pca_test(data):
@@ -131,8 +149,8 @@ def pca_test(data):
     fig.subplots_adjust(top=.85, wspace=.3)
     percent_correct = []
     for k in k_pcas:
-        holdout_errors = [[],[],[],[],[]]
-        train_errors = [[],[],[],[],[]]
+        train_errors = [[],[],[],[],[],[],[],[],[],[],[]]
+        holdout_errors = [[],[],[],[],[],[],[],[],[],[],[]]
 
         pc = train_model(data, k, learning_rates[k_pcas.index(k)])
 
@@ -144,8 +162,10 @@ def pca_test(data):
         graph.set_title(str(k) + " Principle Components")
         graph.set_ylabel("Cross Entropy Loss")
         graph.set_xlabel("# of Epochs")
-        graph.errorbar([2,4,6,8,10], holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
-        graph.errorbar([2,4,6,8,10], train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
+        graph.errorbar(list(range(11)), holdout_mean, holdout_std, linestyle='-', color='red', marker='o', label="holdout")
+        graph.errorbar(list(range(11)), train_mean, train_std, linestyle='-', color='blue', marker='o', label="train")
+        graph.fill_between(list(range(11)), np.asarray(holdout_mean) + np.asarray(holdout_std), np.asarray(holdout_mean) - np.asarray(holdout_std), facecolor='r',alpha=0.5)
+        graph.fill_between(list(range(11)), np.asarray(train_mean) + np.asarray(train_std), np.asarray(train_mean) - np.asarray(train_std), facecolor='b',alpha=0.5)
         graph.legend()
 
     plt.savefig("pca_test.png", bbox_inches='tight')
