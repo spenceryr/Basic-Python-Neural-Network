@@ -78,6 +78,37 @@ def batch_gd_sm(T, a, dim):
         train_errors[e+1].append(ce_error(w, train_set))
     return best_w
 
+def stochastic_gd_sm(T, a, dim):
+    """
+    Args:
+        T: trials/epochs
+        a: learning rate
+    """
+    global c
+    global train_set
+    global holdout_set
+    global holdout_errors
+    global train_errors
+
+    w = [np.zeros(dim) for _ in range(c)]   #list of weight vectors
+    best_w = w
+    minError = ce_error(w, holdout_set)
+    holdout_errors[0].append(minError)
+    train_errors[0].append(ce_error(w, train_set))
+    for e in range(T):
+        permutation = [i for i in range(len(train_set))]
+        rand.shuffle(permutation)
+        for n in range(len(permutation)):
+            for i in range(c):
+                w[i] = np.add(w[i], np.multiply(a, (gradient_sm(train_set[permutation[n]][0], one_hot(train_set[permutation[n]][1])[i], w, i)))))
+        curError = ce_error(v, holdout_set)
+        if curError < minError:
+            best_w = w
+            minError = curError
+        holdout_errors[e+1].append(curError)
+        train_errors[e+1].append(ce_error(w, train_set))
+    return best_w
+
 def ce_error(w, s):
     """
     Args:
