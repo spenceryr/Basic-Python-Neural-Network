@@ -24,8 +24,8 @@ train_set = []
 holdout_set = []
 test_set = []
 epochs = 10
-c1 = 'f' #First emotion category based on semantics of filename
-c2 = 's' #Second emotion category based on semantics of filename
+c1 = 'ht' #First emotion category based on semantics of filename
+c2 = 'm' #Second emotion category based on semantics of filename
 holdout_errors = []
 train_errors = []
 
