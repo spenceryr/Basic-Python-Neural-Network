@@ -14,7 +14,7 @@ k_pcas = None
 if not test_single:
     test_learning_rates = input("Testing learning rates?(y/n): ").lower()
     test_learning_rates = test_learning_rates == 'y' or test_learning_rates == 'yes'
-    learning_rates = [.01, .015, .02] if test_learning_rates else .06
+    learning_rates = [.01, .015, .02] if test_learning_rates else .015
     k_pcas = 32 if test_learning_rates else [1,8,16,32]
 else:
     learning_rates = .015
@@ -53,6 +53,8 @@ def batch_gd_sm(T, a, dim):
     Args:
         T: trials/epochs
         a: learning rate
+    Returns:
+        the resulting best list of weight vectors
     """
     global c
     global train_set
@@ -83,6 +85,8 @@ def stochastic_gd_sm(T, a, dim):
     Args:
         T: trials/epochs
         a: learning rate
+    Returns:
+        the resulting best list of weight vectors
     """
     global c
     global train_set
@@ -315,6 +319,13 @@ def train_model(slice_data, k, lr, random=True):
     return percent_correct
 
 def correct_category_sm(x, w):
+    """
+    Args:
+        x: input image, label pair
+        w: list of weight vectors
+    Returns:
+        1 if the highest value of the activation function is associated with the input's class
+    """
     global c
     isCorrect = 0
     currentMax = 0
@@ -329,6 +340,14 @@ def correct_category_sm(x, w):
     return isCorrect
 
 def confusion_matrix(w, s):
+    """
+    Args:
+        w: list of weight vectors
+        s: set to find confusion matrix of
+    Returns:
+        confusion matrix indicated by the weight matrix and set
+    """
+
     global c
     matrix = np.array([[0 for _ in range(c)] for _ in range(c)])
     for i in range(c):
@@ -337,6 +356,15 @@ def confusion_matrix(w, s):
     return matrix
 
 def j_chosen_for_i(i, j, w, s):
+    """
+    Args:
+        i: encoding of correct emotion
+        j: encoding of emotion chosen by machine
+        w: list of weight vectors
+        s: set to test on
+    Returns:
+        total number of times the machine chose emotion j for an image of emotion i
+    """
     global c
     emotion_i = [x for x, l in s if one_hot(l)[i] == 1]
     total = 0
@@ -353,6 +381,12 @@ def j_chosen_for_i(i, j, w, s):
     return total
 
 def append_one(image_set):
+    """
+    Args:
+        image_set: set of images to append 1 to
+    Returns:
+        image set, but with the image vector in the set having appended a 1 to
+    """
     for (image,label), i in zip(image_set, range(len(image_set))):
         image_set[i] = (np.array([np.insert(image, 0, 1)]), label)
     return image_set
@@ -362,6 +396,8 @@ def bucket(l, n):
     Args:
         l: list to convert into bucketed list
         n: size of bucket
+    Returns:
+        list of "buckets" where each bucket holds n element of the original list in sequential order
     """ 
     bl = [l[i * n:(i + 1) * n] for i in range((len(l) + n - 1) // n )]
     return bl
@@ -371,6 +407,8 @@ def unbucket(bl, n):
     Args:
         l: bucket list to convert into regular list
         n: size of bucket
+    Returns:
+        reverses bucketing process
     """ 
     l = []
     for b in bl:
